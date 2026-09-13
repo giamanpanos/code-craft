@@ -76,66 +76,49 @@ export const useCodeEditorStore = create<CodeEditorState>((set, get) => {
 
       set({ isRunning: true, error: null, output: "" });
 
-      // We use piston api to run code into an isolated environment (docker container). This is done for 2 reasons. The 1st one is because many of the code languages can not run on the browser (backend languages) and the 2nd is because the code that the user may provide can be malicious and hurt our app.
       try {
-        const runtime = LANGUAGE_CONFIG[language].pistonRuntime;
-        const response = await fetch(
-          "https://emkc.org/api/v2/piston/execute ",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              language: runtime.language,
-              version: runtime.version,
-              files: [{ content: code }],
-            }),
-          }
-        );
+
+        const response = await fetch("/api/execute", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            language,
+            code,
+          }),
+        });
 
         const data = await response.json();
 
-        console.log("data back from piston", data);
+        console.log("data back from JDoodle", data);
 
-        // we have 3 different if statements to check for errors as languages like JS and Python are interpreted and languages like C++ and Rust are compiled so they have different types of errors
+        if (!response.ok || data.error) {
+        const error = data.error || "Code execution failed";
 
-        // handle API-level errors (for all languages)
-        if (data.message) {
-          set({
-            error: data.message,
-            executionResult: { code, output: "", error: data.message },
-          });
-          return;
-        }
-
-        // handle compilation errors (for compiled languages)
-        if (data.compile && data.compile.code !== 0) {
-          const error = data.compile.stderr || data.compile.output;
-          set({
-            error,
-            executionResult: { code, output: "", error },
-          });
-          return;
-        }
-
-        // handle runtime errors (for interpreted languages)
-        if (data.run && data.run.code !== 0) {
-          const error = data.run.stderr || data.run.output;
-          set({
-            error,
-            executionResult: { code, output: "", error },
-          });
-          return;
-        }
-
-        // if we get here, execution was successful
-        const output = data.run.output;
         set({
+          error,
+          executionResult: {
+            code,
+            output: "",
+            error,
+          },
+        });
+
+        return;
+      }
+
+      const output = data.output || "";
+
+      set({
+        output: output.trim(),
+        error: null,
+        executionResult: {
+          code,
           output: output.trim(),
           error: null,
-          executionResult: { code, output: output.trim(), error: null },
-        });
+        },
+      });
       } catch (error) {
         console.error("Error running code:", error);
         set({
