@@ -1,7 +1,6 @@
 import { CodeEditorState } from "./../types/index";
 import { create } from "zustand";
 import { Monaco } from "@monaco-editor/react";
-import { LANGUAGE_CONFIG } from "@/app/(root)/_constants";
 
 const getInitialState = () => {
   // if we are on the server, return default values
